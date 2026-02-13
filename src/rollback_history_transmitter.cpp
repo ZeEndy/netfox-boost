@@ -2,37 +2,32 @@
 #include "rollback_history_transmitter.h"
 #include "utils.h"
 
-#include <godot_cpp/core/object.hpp>
-#include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/classes/multiplayer_api.hpp>
 #include <godot_cpp/classes/multiplayer_peer.hpp>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/object.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
-int _RollbackHistoryTransmitter::get_earliest_input_tick()
-{
+int _RollbackHistoryTransmitter::get_earliest_input_tick() {
 	return _earliest_input_tick;
 }
 
-int _RollbackHistoryTransmitter::get_latest_state_tick()
-{
+int _RollbackHistoryTransmitter::get_latest_state_tick() {
 	return _latest_state_tick;
 }
 
-void _RollbackHistoryTransmitter::set_predicted_tick(Variant p_is_predicted_tick)
-{
+void _RollbackHistoryTransmitter::set_predicted_tick(Variant p_is_predicted_tick) {
 	_is_predicted_tick = p_is_predicted_tick;
 }
 
-void _RollbackHistoryTransmitter::sync_settings(Node* p_root, bool p_enable_input_broadcast, int p_full_state_interval, int p_diff_ack_interval)
-{
+void _RollbackHistoryTransmitter::sync_settings(Node *p_root, bool p_enable_input_broadcast, int p_full_state_interval, int p_diff_ack_interval) {
 	root = p_root;
 	enable_input_broadcast = p_enable_input_broadcast;
 	full_state_interval = p_full_state_interval;
 	diff_ack_interval = p_diff_ack_interval;
 }
 
-void _RollbackHistoryTransmitter::configure(Ref<_PropertyHistoryBuffer> p_state_history, Ref<_PropertyHistoryBuffer> p_input_history, Ref<_PropertyConfig> p_state_property_config, Ref<_PropertyConfig> p_input_property_config, PeerVisibilityFilter* p_visibility_filter, Ref<PropertyCache> p_property_cache, Ref<_Set> p_skipset)
-{
+void _RollbackHistoryTransmitter::configure(Ref<_PropertyHistoryBuffer> p_state_history, Ref<_PropertyHistoryBuffer> p_input_history, Ref<_PropertyConfig> p_state_property_config, Ref<_PropertyConfig> p_input_property_config, PeerVisibilityFilter *p_visibility_filter, Ref<PropertyCache> p_property_cache, Ref<_Set> p_skipset, Ref<_NetworkSchema> p_schema) {
 	_state_history = p_state_history;
 	_input_history = p_input_history;
 	_state_property_config = p_state_property_config;
@@ -41,17 +36,18 @@ void _RollbackHistoryTransmitter::configure(Ref<_PropertyHistoryBuffer> p_state_
 	_property_cache = p_property_cache;
 	_skipset = p_skipset;
 
-	_input_encoder = _RedundantHistoryEncoder::new_(_input_history, _property_cache);
-	_full_state_encoder = _SnapshotHistoryEncoder::new_(_state_history, _property_cache);
-	_diff_state_encoder = _DiffHistoryEncoder::new_(_state_history, _property_cache);
+	_schema = p_schema;
+
+	_input_encoder = _RedundantHistoryEncoder::new_(_input_history, _property_cache, _schema);
+	_full_state_encoder = _SnapshotHistoryEncoder::new_(_state_history, _property_cache, _schema);
+	_diff_state_encoder = _DiffHistoryEncoder::new_(_state_history, _property_cache, _schema);
 
 	_is_initialized = true;
 
 	reset();
 }
 
-void _RollbackHistoryTransmitter::reset()
-{
+void _RollbackHistoryTransmitter::reset() {
 	_ackd_state.clear();
 	int network_time_tick = Utils::get_autoload("NetworkTime")->get("tick");
 	_latest_state_tick = network_time_tick - 1;
@@ -60,13 +56,10 @@ void _RollbackHistoryTransmitter::reset()
 	_next_diff_ack_tick = network_time_tick;
 
 	// Scatter full state sends, so not all nodes send at the same tick
-	if(is_inside_tree())
-	{
+	if (is_inside_tree()) {
 		_next_full_state_tick += UtilityFunctions::hash(root->get_path()) % Math::max(1, full_state_interval);
 		_next_diff_ack_tick += UtilityFunctions::hash(root->get_path()) % Math::max(1, diff_ack_interval);
-	}
-	else
-	{
+	} else {
 		_next_full_state_tick += UtilityFunctions::hash(root->get_name()) % Math::max(1, full_state_interval);
 		_next_diff_ack_tick += UtilityFunctions::hash(root->get_name()) % Math::max(1, diff_ack_interval);
 	}
@@ -76,61 +69,49 @@ void _RollbackHistoryTransmitter::reset()
 	_input_encoder->set_properties(_get_owned_input_props());
 }
 
-void _RollbackHistoryTransmitter::conclude_tick_loop()
-{
+void _RollbackHistoryTransmitter::conclude_tick_loop() {
 	int network_time_tick = Utils::get_autoload("NetworkTime")->get("tick");
 	_earliest_input_tick = network_time_tick;
 }
 
-void _RollbackHistoryTransmitter::transmit_input(int tick)
-{
-	if(!_get_owned_input_props().is_empty())
-	{
+void _RollbackHistoryTransmitter::transmit_input(int tick) {
+	if (!_get_owned_input_props().is_empty()) {
 		int network_rollback_input_delay = Utils::get_autoload("NetworkRollback")->get("input_delay");
 		int input_tick = tick + network_rollback_input_delay;
 		Variant input_data = _input_encoder->encode(input_tick, _get_owned_input_props());
 		int state_owning_peer = root->get_multiplayer_authority();
 
-		if(enable_input_broadcast)
-		{
+		if (enable_input_broadcast) {
 			Array rpc_target_peers = _visibility_filter->get_rpc_target_peers();
-			for(int i = 0; i < rpc_target_peers.size(); ++i)
-			{
+			for (int i = 0; i < rpc_target_peers.size(); ++i) {
 				int peer = rpc_target_peers[i];
 				rpc_id(peer, "_submit_input", input_tick, input_data);
 			}
-		}
-		else if(state_owning_peer != get_multiplayer()->get_unique_id())
-		{
+		} else if (state_owning_peer != get_multiplayer()->get_unique_id()) {
 			rpc_id(state_owning_peer, "_submit_input", input_tick, input_data);
 		}
 	}
 }
 
-void _RollbackHistoryTransmitter::transmit_state(int tick)
-{
-	if(_get_owned_state_props().is_empty())
-	{
+void _RollbackHistoryTransmitter::transmit_state(int tick) {
+	if (_get_owned_state_props().is_empty()) {
 		// We don't own state, don't transmit anything
-		return ;
+		return;
 	}
 
-	if(_is_predicted_tick && !_input_property_config->get_properties().is_empty())
-	{
+	if (_is_predicted_tick && !_input_property_config->get_properties().is_empty()) {
 		// Don't transmit anything if we're predicting
 		// EXCEPT when we're running inputless
-		return ;
+		return;
 	}
 
 	// Include properties we own
 	Ref<_PropertySnapshot> full_state = _PropertySnapshot::new_();
 
 	Array props = _get_owned_state_props();
-	for(int i = 0; i < props.size(); ++i)
-	{
+	for (int i = 0; i < props.size(); ++i) {
 		Ref<PropertyEntry> property = props[i];
-		if(_should_broadcast(property, tick))
-		{
+		if (_should_broadcast(property, tick)) {
 			full_state->set_value(property->_to_string(), property->get_value());
 		}
 	}
@@ -138,9 +119,8 @@ void _RollbackHistoryTransmitter::transmit_state(int tick)
 	emit_signal("_on_transmit_state", full_state, tick);
 
 	// No properties to send?
-	if(full_state->is_empty())
-	{
-		return ;
+	if (full_state->is_empty()) {
+		return;
 	}
 
 	_latest_state_tick = Math::max(_latest_state_tick, tick);
@@ -149,34 +129,25 @@ void _RollbackHistoryTransmitter::transmit_state(int tick)
 	bool is_sending_diffs = Utils::get_autoload("NetworkRollback")->get("enable_diff_states");
 	bool is_full_state_tick = !is_sending_diffs || (full_state_interval > 0 && tick > _next_full_state_tick);
 
-	if(is_full_state_tick)
-	{
-
+	if (is_full_state_tick) {
 		// Broadcast new full state
 		TypedArray<int> peers = _visibility_filter->get_rpc_target_peers();
-		for(int i = 0; i < peers.size(); ++i)
-		{
+		for (int i = 0; i < peers.size(); ++i) {
 			int peer = peers[i];
 			_send_full_state(tick, peer);
 		}
 
 		// Adjust next full state if sending diffs
-		if(is_sending_diffs)
-		{
+		if (is_sending_diffs) {
 			_next_full_state_tick = tick + full_state_interval;
 		}
-	}
-	else
-	{
-
+	} else {
 		// Send diffs to each peer
 		TypedArray<int> peers = _visibility_filter->get_visible_peers();
-		for(int i = 0; i < peers.size(); ++i)
-		{
+		for (int i = 0; i < peers.size(); ++i) {
 			int peer = peers[i];
 			int reference_tick = _ackd_state.get(peer, -1);
-			if(reference_tick < 0 || !_state_history->has(reference_tick))
-			{
+			if (reference_tick < 0 || !_state_history->has(reference_tick)) {
 				// Peer hasn't ack'd any tick, or we don't have the ack'd tick
 				// Send full state
 				_send_full_state(tick, peer);
@@ -186,13 +157,10 @@ void _RollbackHistoryTransmitter::transmit_state(int tick)
 			// Prepare diff
 			Variant diff_state_data = _diff_state_encoder->encode(tick, reference_tick, _get_owned_state_props());
 
-			if(_diff_state_encoder->get_full_snapshot().size() == _diff_state_encoder->get_encoded_snapshot().size())
-			{
+			if (_diff_state_encoder->get_full_snapshot().size() == _diff_state_encoder->get_encoded_snapshot().size()) {
 				// State is completely different, send full state
 				_send_full_state(tick, peer);
-			}
-			else
-			{
+			} else {
 				// Send only diff
 				rpc_id(peer, "_submit_diff_state", diff_state_data, tick, reference_tick);
 
@@ -205,25 +173,23 @@ void _RollbackHistoryTransmitter::transmit_state(int tick)
 	}
 }
 
-bool _RollbackHistoryTransmitter::_should_broadcast(Ref<PropertyEntry> property, int tick)
-{
+bool _RollbackHistoryTransmitter::_should_broadcast(Ref<PropertyEntry> property, int tick) {
 	auto network_rollback = Utils::get_autoload("NetworkRollback");
 	// Only broadcast if we've simulated the node
 	// NOTE: _can_simulate checks mutations, but to override _skipset
 	// we check first
-	if(network_rollback->call("is_mutated", property->node, tick - 1))
+	if (network_rollback->call("is_mutated", property->node, tick - 1))
 		return true;
-	if(_skipset->has(property->node))
+	if (_skipset->has(property->node))
 		return false;
-	if(network_rollback->call("is_rollback_aware", property->node))
+	if (network_rollback->call("is_rollback_aware", property->node))
 		return network_rollback->call("is_simulated", property->node);
 
 	// Node is not rollback-aware, broadcast updates only if we own it
 	return property->node->is_multiplayer_authority();
 }
 
-void _RollbackHistoryTransmitter::_send_full_state(int tick, int peer)
-{
+void _RollbackHistoryTransmitter::_send_full_state(int tick, int peer) {
 	Dictionary full_state_snapshot = _state_history->get_snapshot(tick)->as_dictionary();
 	Variant full_state_data = _full_state_encoder->encode(tick, _get_owned_state_props());
 
@@ -231,22 +197,17 @@ void _RollbackHistoryTransmitter::_send_full_state(int tick, int peer)
 
 	rpc_id(peer, "_submit_full_state", full_state_data, tick);
 
-	if(peer <= 0)
-	{
+	if (peer <= 0) {
 		network_performance->call("push_full_state_broadcast", full_state_snapshot);
 		network_performance->call("push_sent_state_broadcast", full_state_snapshot);
-	}
-	else
-	{
+	} else {
 		network_performance->call("push_full_state", full_state_snapshot);
 		network_performance->call("push_sent_state", full_state_snapshot);
 	}
 }
 
-void _RollbackHistoryTransmitter::_submit_input(int tick, Array data)
-{
-	if(!_is_initialized)
-	{
+void _RollbackHistoryTransmitter::_submit_input(int tick, PackedByteArray data) {
+	if (!_is_initialized) {
 		// Settings not processed yet
 		return;
 	}
@@ -254,124 +215,109 @@ void _RollbackHistoryTransmitter::_submit_input(int tick, Array data)
 	int sender = get_multiplayer()->get_remote_sender_id();
 	TypedArray<_PropertySnapshot> snapshots = _input_encoder->decode(data, _input_property_config->get_properties_owned_by(sender));
 	int earliest_received_input = _input_encoder->apply(tick, snapshots, sender);
-	if(earliest_received_input >= 0)
+	if (earliest_received_input >= 0)
 		_earliest_input_tick = Math::min(_earliest_input_tick, earliest_received_input);
 }
 
-void _RollbackHistoryTransmitter::_submit_full_state(Array data, int tick)
-{
-	if(!_is_initialized)
-	{
+void _RollbackHistoryTransmitter::_submit_full_state(Array data, int tick) {
+	if (!_is_initialized) {
 		// Settings not processed yet
-		return ;
+		return;
 	}
 
 	int sender = get_multiplayer()->get_remote_sender_id();
 	Variant snapshot = _full_state_encoder->decode(data, _state_property_config->get_properties_owned_by(sender));
-	if(!_full_state_encoder->apply(tick, snapshot, sender))
-	{
+	if (!_full_state_encoder->apply(tick, snapshot, sender)) {
 		// Invalid data
-		return ;
+		return;
 	}
 
 	bool network_rollback_enable_diff_states = Utils::get_autoload("NetworkRollback")->get("enable_diff_states");
 
 	_latest_state_tick = tick;
-	if(network_rollback_enable_diff_states)
+	if (network_rollback_enable_diff_states)
 		rpc_id(sender, "_ack_full_state", tick);
 }
 
-void _RollbackHistoryTransmitter::_submit_diff_state(PackedByteArray data, int tick, int reference_tick)
-{
-	if(!_is_initialized)
-	{
+void _RollbackHistoryTransmitter::_submit_diff_state(PackedByteArray data, int tick, int reference_tick) {
+	if (!_is_initialized) {
 		// Settings not processed yet
-		return ;
+		return;
 	}
 
 	int sender = get_multiplayer()->get_remote_sender_id();
 	Variant diff_snapshot = _diff_state_encoder->decode(data, _state_property_config->get_properties_owned_by(sender));
-	if(!_diff_state_encoder->apply(tick, diff_snapshot, reference_tick, sender))
-	{
+	if (!_diff_state_encoder->apply(tick, diff_snapshot, reference_tick, sender)) {
 		// Invalid data
-		return ;
+		return;
 	}
 
 	_latest_state_tick = tick;
 
 	bool network_rollback_enable_diff_states = Utils::get_autoload("NetworkRollback")->get("enable_diff_states");
-	if(network_rollback_enable_diff_states)
-	{
-		if(diff_ack_interval > 0 && tick > _next_diff_ack_tick)
-		{
+	if (network_rollback_enable_diff_states) {
+		if (diff_ack_interval > 0 && tick > _next_diff_ack_tick) {
 			rpc_id(sender, "_ack_diff_state", tick);
 			_next_diff_ack_tick = tick + diff_ack_interval;
 		}
 	}
 }
 
-void _RollbackHistoryTransmitter::_ack_full_state(int tick)
-{
+void _RollbackHistoryTransmitter::_ack_full_state(int tick) {
 	int sender_id = get_multiplayer()->get_remote_sender_id();
 	_ackd_state[sender_id] = tick;
 
 	_logger->trace(vformat("Peer %d ack'd full state for tick %d", sender_id, tick));
 }
 
-void _RollbackHistoryTransmitter::_ack_diff_state(int tick)
-{
+void _RollbackHistoryTransmitter::_ack_diff_state(int tick) {
 	int sender_id = get_multiplayer()->get_remote_sender_id();
 	_ackd_state[sender_id] = tick;
 
 	_logger->trace(vformat("Peer %d ack'd diff state for tick %d", sender_id, tick));
 }
 
-TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_recorded_state_props()
-{
+TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_recorded_state_props() {
 	return _state_property_config->get_properties();
 }
 
-TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_owned_state_props()
-{
+TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_owned_state_props() {
 	return _state_property_config->get_owned_properties();
 }
 
-TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_recorded_input_props()
-{
+TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_recorded_input_props() {
 	return _input_property_config->get_owned_properties();
 }
 
-TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_owned_input_props()
-{
+TypedArray<PropertyEntry> _RollbackHistoryTransmitter::_get_owned_input_props() {
 	return _input_property_config->get_owned_properties();
 }
 
-_RollbackHistoryTransmitter::_RollbackHistoryTransmitter()
-{
+_RollbackHistoryTransmitter::_RollbackHistoryTransmitter() {
 	Dictionary dict;
 	dict["rpc_mode"] = MultiplayerAPI::RPC_MODE_ANY_PEER;
 	dict["transfer_mode"] = MultiplayerPeer::TRANSFER_MODE_UNRELIABLE;
 	dict["call_local"] = false;
 	rpc_config("_submit_input", dict);
-	
+
 	dict.clear();
 	dict["rpc_mode"] = MultiplayerAPI::RPC_MODE_ANY_PEER;
 	dict["transfer_mode"] = MultiplayerPeer::TRANSFER_MODE_UNRELIABLE_ORDERED;
 	dict["call_local"] = false;
 	rpc_config("_submit_full_state", dict);
-	
+
 	dict.clear();
 	dict["rpc_mode"] = MultiplayerAPI::RPC_MODE_ANY_PEER;
 	dict["transfer_mode"] = MultiplayerPeer::TRANSFER_MODE_UNRELIABLE_ORDERED;
 	dict["call_local"] = false;
 	rpc_config("_submit_diff_state", dict);
-	
+
 	dict.clear();
 	dict["rpc_mode"] = MultiplayerAPI::RPC_MODE_ANY_PEER;
 	dict["transfer_mode"] = MultiplayerPeer::TRANSFER_MODE_RELIABLE;
 	dict["call_local"] = false;
 	rpc_config("_ack_full_state", dict);
-	
+
 	dict.clear();
 	dict["rpc_mode"] = MultiplayerAPI::RPC_MODE_ANY_PEER;
 	dict["transfer_mode"] = MultiplayerPeer::TRANSFER_MODE_UNRELIABLE_ORDERED;
@@ -381,11 +327,10 @@ _RollbackHistoryTransmitter::_RollbackHistoryTransmitter()
 
 Ref<_NetfoxLogger> _RollbackHistoryTransmitter::_logger;
 
-void _RollbackHistoryTransmitter::_bind_methods()
-{
+void _RollbackHistoryTransmitter::_bind_methods() {
 	_logger = _NetfoxLogger::for_netfox("_RollbackHistoryTransmitter");
 
-	ClassDB::bind_method(D_METHOD("configure", "p_input_history", "p_state_property_config", "p_input_property_config", "p_visibility_filter", "p_property_cache", "p_skipset"), &_RollbackHistoryTransmitter::configure);
+	ClassDB::bind_method(D_METHOD("configure", "p_input_history", "p_state_property_config", "p_input_property_config", "p_visibility_filter", "p_property_cache", "p_skipset", "p_schema"), &_RollbackHistoryTransmitter::configure);
 	ClassDB::bind_method(D_METHOD("get_earliest_input_tick"), &_RollbackHistoryTransmitter::get_earliest_input_tick);
 	ClassDB::bind_method(D_METHOD("get_latest_state_tick"), &_RollbackHistoryTransmitter::get_latest_state_tick);
 	ClassDB::bind_method(D_METHOD("set_predicted_tick", "p_is_predicted_tick"), &_RollbackHistoryTransmitter::set_predicted_tick);
@@ -403,4 +348,3 @@ void _RollbackHistoryTransmitter::_bind_methods()
 	ClassDB::bind_method(D_METHOD("_ack_full_state", "tick"), &_RollbackHistoryTransmitter::_ack_full_state);
 	ClassDB::bind_method(D_METHOD("_ack_diff_state", "tick"), &_RollbackHistoryTransmitter::_ack_diff_state);
 }
-

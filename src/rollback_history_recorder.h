@@ -1,25 +1,25 @@
 #pragma once
 
 #include "property_cache.h"
-#include "property_entry.h"
 #include "property_config.h"
+#include "property_entry.h"
 #include "property_history_buffer.h"
 #include "property_snapshot.h"
 #include "set.h"
 
+#include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/godot.hpp>
+#include <godot_cpp/templates/hash_set.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
-#include <godot_cpp/classes/ref_counted.hpp>
-#include <godot_cpp/templates/hash_set.hpp>
 
 using namespace godot;
 
 class _RollbackHistoryRecorder : public RefCounted {
 	GDCLASS(_RollbackHistoryRecorder, RefCounted);
-public:
 
-// Provided externally by RBS
+public:
+	// Provided externally by RBS
 
 protected:
 	Ref<_PropertyHistoryBuffer> _state_history;
@@ -52,7 +52,7 @@ public:
 	bool _should_record_tick(int tick);
 	TypedArray<PropertyEntry> _get_state_props_to_record(int tick);
 
-// Shared utils, extract later
+	// Shared utils, extract later
 	bool _should_record_property(Ref<PropertyEntry> property_entry, int tick);
 	TypedArray<PropertyEntry> _get_recorded_state_props();
 	TypedArray<PropertyEntry> _get_owned_state_props();
