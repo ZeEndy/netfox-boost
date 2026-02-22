@@ -57,10 +57,10 @@ protected:
 public:
 	_StringSerializer() {};
 	~_StringSerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		b->put_utf8_string(v.stringify());
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return b->get_utf8_string();
 	}
 };
@@ -74,8 +74,8 @@ protected:
 public:
 	_BoolSerializer() {};
 	~_BoolSerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_u8(v ? 1 : 0); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_u8() > 0; }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_u8(v ? 1 : 0); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_u8() > 0; }
 };
 
 class _Uint8Serializer : public NetworkSchemaSerializer {
@@ -87,8 +87,8 @@ protected:
 public:
 	_Uint8Serializer() {};
 	~_Uint8Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_u8(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_u8(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_u8(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_u8(); }
 };
 
 class _Uint16Serializer : public NetworkSchemaSerializer {
@@ -100,8 +100,8 @@ protected:
 public:
 	_Uint16Serializer() {};
 	~_Uint16Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_u16(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_u16(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_u16(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_u16(); }
 };
 
 class _Uint32Serializer : public NetworkSchemaSerializer {
@@ -113,8 +113,8 @@ protected:
 public:
 	_Uint32Serializer() {};
 	~_Uint32Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_u32(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_u32(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_u32(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_u32(); }
 };
 
 class _Uint64Serializer : public NetworkSchemaSerializer {
@@ -126,8 +126,8 @@ protected:
 public:
 	_Uint64Serializer() {};
 	~_Uint64Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_u64(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_u64(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_u64(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_u64(); }
 };
 
 class _Int8Serializer : public NetworkSchemaSerializer {
@@ -139,8 +139,8 @@ protected:
 public:
 	_Int8Serializer() {};
 	~_Int8Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_8(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_8(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_8(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_8(); }
 };
 
 class _Int16Serializer : public NetworkSchemaSerializer {
@@ -152,8 +152,8 @@ protected:
 public:
 	_Int16Serializer() {};
 	~_Int16Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_16(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_16(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_16(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_16(); }
 };
 
 class _Int32Serializer : public NetworkSchemaSerializer {
@@ -165,8 +165,8 @@ protected:
 public:
 	_Int32Serializer() {};
 	~_Int32Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_32(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_32(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_32(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_32(); }
 };
 
 class _Int64Serializer : public NetworkSchemaSerializer {
@@ -178,8 +178,8 @@ protected:
 public:
 	_Int64Serializer() {};
 	~_Int64Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_64(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_64(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_64(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_64(); }
 };
 
 class _Float16Serializer : public NetworkSchemaSerializer {
@@ -191,14 +191,14 @@ protected:
 public:
 	_Float16Serializer() {};
 	~_Float16Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		if (static_cast<int>(Engine::get_singleton()->get_version_info()["hex"]) >= 0x040400) {
 			b->put_half(v);
 		} else {
 			b->put_float(v);
 		}
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		if (static_cast<int>(Engine::get_singleton()->get_version_info()["hex"]) >= 0x040400) {
 			return b->get_half();
 		} else {
@@ -216,8 +216,8 @@ protected:
 public:
 	_Float32Serializer() {};
 	~_Float32Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_float(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_float(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_float(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_float(); }
 };
 
 class _Float64Serializer : public NetworkSchemaSerializer {
@@ -229,8 +229,8 @@ protected:
 public:
 	_Float64Serializer() {};
 	~_Float64Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) { b->put_double(v); }
-	Variant decode(Ref<StreamPeerBuffer> b) { return b->get_double(); }
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) { b->put_double(v); }
+	Variant decode(Ref<StreamPeerBuffer> &b) { return b->get_double(); }
 };
 
 class _GenericVec2Serializer : public NetworkSchemaSerializer {
@@ -252,12 +252,12 @@ public:
 	_GenericVec2Serializer() {};
 	~_GenericVec2Serializer() {};
 
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
-		Vector2 v2 = static_cast<Vector2>(v);
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
+		Vector2 v2 = v;
 		component->encode(v2.x, b);
 		component->encode(v2.y, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return Vector2(component->decode(b), component->decode(b));
 	}
 };
@@ -281,15 +281,14 @@ public:
 	}
 	_GenericVec3Serializer() {};
 	~_GenericVec3Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
-		Vector3 v3 = static_cast<Vector3>(v);
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
+		Vector3 v3 = v;
 		component->encode(v3.x, b);
 		component->encode(v3.y, b);
 		component->encode(v3.z, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
-		return Vector3(
-				component->decode(b), component->decode(b), component->decode(b));
+	Variant decode(Ref<StreamPeerBuffer> &b) {
+		return Vector3(component->decode(b), component->decode(b), component->decode(b));
 	}
 };
 
@@ -312,10 +311,10 @@ public:
 	}
 	_Normal2Serializer() {};
 	~_Normal2Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		component->encode(static_cast<Vector2>(v).angle(), b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return Vector2(1, 0).rotated(component->decode(b));
 	}
 };
@@ -340,12 +339,12 @@ public:
 	_Normal3Serializer() {};
 	~_Normal3Serializer() {};
 
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Vector2 uv = static_cast<Vector3>(v).octahedron_encode();
 		component->encode(uv.x, b);
 		component->encode(uv.y, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return Vector3().octahedron_decode(
 				Vector2(component->decode(b), component->decode(b)));
 	}
@@ -369,14 +368,14 @@ public:
 	}
 	_GenericVec4Serializer() {};
 	~_GenericVec4Serializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Vector4 v4 = static_cast<Vector4>(v);
 		component->encode(v4.x, b);
 		component->encode(v4.y, b);
 		component->encode(v4.z, b);
 		component->encode(v4.w, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return Vector4(
 				component->decode(b), component->decode(b), component->decode(b), component->decode(b));
 	}
@@ -401,14 +400,14 @@ public:
 	}
 	_GenericQuaternionSerializer() {};
 	~_GenericQuaternionSerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Quaternion vq = static_cast<Quaternion>(v);
 		component->encode(vq.x, b);
 		component->encode(vq.y, b);
 		component->encode(vq.z, b);
 		component->encode(vq.w, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return Quaternion(
 				component->decode(b), component->decode(b), component->decode(b), component->decode(b));
 	}
@@ -433,7 +432,7 @@ public:
 	}
 	_GenericTransform2DSerializer() {};
 	~_GenericTransform2DSerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Transform2D t = static_cast<Transform2D>(v);
 
 		component->encode(t.columns[0][0], b);
@@ -443,7 +442,7 @@ public:
 		component->encode(t.get_origin().x, b);
 		component->encode(t.get_origin().y, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return Transform2D(
 				Vector2(component->decode(b), component->decode(b)),
 				Vector2(component->decode(b), component->decode(b)),
@@ -470,7 +469,7 @@ public:
 	}
 	_GenericTransform3DSerializer() {};
 	~_GenericTransform3DSerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Transform3D t = static_cast<Transform3D>(v);
 		component->encode(t.basis.get_column(0).x, b);
 		component->encode(t.basis.get_column(0).y, b);
@@ -485,7 +484,7 @@ public:
 		component->encode(t.origin.y, b);
 		component->encode(t.origin.z, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		return Transform3D(
 				Basis(
 						Vector3(component->decode(b), component->decode(b), component->decode(b)),
@@ -522,12 +521,12 @@ public:
 	}
 	_QuantizingSerializer() {};
 	~_QuantizingSerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Variant f = UtilityFunctions::inverse_lerp(from_min, from_max, v);
 		Variant s = UtilityFunctions::lerp(to_min, to_max, f);
 		component->encode(s, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		Variant s = component->decode(b);
 		Variant f = UtilityFunctions::inverse_lerp(to_min, to_max, s);
 		return UtilityFunctions::lerp(from_min, from_max, f);
@@ -557,12 +556,12 @@ public:
 	}
 	_ModuloSerializer() {};
 	~_ModuloSerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		double f = UtilityFunctions::fposmod(static_cast<double>(v), value_max) / value_max;
 		double s = f * component_max;
 		component->encode(s, b);
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		double s = static_cast<double>(component->decode(b));
 		return (s / component_max) * value_max;
 	}
@@ -589,14 +588,14 @@ public:
 	}
 	_ArraySerializer() {};
 	~_ArraySerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Array array = static_cast<Array>(v);
 		size->encode(array.size(), b);
 		for (int i = 0; i < array.size(); i++) {
 			component->encode(array[i], b);
 		}
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		Array array = Array();
 		int item_count = static_cast<int>(size->decode(b));
 		array.resize(item_count);
@@ -630,7 +629,7 @@ public:
 	}
 	_DictionarySerializer() {};
 	~_DictionarySerializer() {};
-	void encode(Variant v, Ref<StreamPeerBuffer> b) {
+	void encode(Variant v, Ref<StreamPeerBuffer> &b) {
 		Dictionary dictionary = static_cast<Dictionary>(v);
 
 		size_serializer->encode(dictionary.size(), b);
@@ -641,7 +640,7 @@ public:
 			value_serializer->encode(value, b);
 		}
 	}
-	Variant decode(Ref<StreamPeerBuffer> b) {
+	Variant decode(Ref<StreamPeerBuffer> &b) {
 		Dictionary dictionary = {};
 
 		int size = size_serializer->decode(b);

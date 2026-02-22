@@ -36,7 +36,7 @@ public:
 	static Ref<_SnapshotHistoryEncoder> new_(Ref<_PropertyHistoryBuffer> p_history, Ref<PropertyCache> p_property_cache, Ref<_NetworkSchema> p_schema);
 
 	void set_properties(Array properties);
-	Array encode(int tick, TypedArray<PropertyEntry> properties);
+	PackedByteArray encode(int tick, TypedArray<PropertyEntry> properties);
 	Ref<_PropertySnapshot> decode(PackedByteArray data, TypedArray<PropertyEntry> properties);
 	bool apply(int tick, Ref<_PropertySnapshot> snapshot, int sender = -1);
 };

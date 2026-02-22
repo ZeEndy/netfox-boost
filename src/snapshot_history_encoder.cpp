@@ -22,14 +22,14 @@ void _SnapshotHistoryEncoder::set_properties(Array properties) {
 	}
 }
 
-Array _SnapshotHistoryEncoder::encode(int tick, TypedArray<PropertyEntry> properties) {
+PackedByteArray _SnapshotHistoryEncoder::encode(int tick, TypedArray<PropertyEntry> properties) {
 	Ref<_PropertySnapshot> snapshot = _history->get_snapshot(tick);
 
 	Ref<StreamPeerBuffer> buffer;
 	buffer.instantiate();
 	buffer->put_u8(_version);
 
-	for (int i = 0; i < properties.size(); i += 1) {
+	for (int i = 0; i < properties.size(); i++) {
 		Ref<PropertyEntry> property_entry = properties[i];
 		String path = property_entry->_to_string();
 		_schema->encode(path, snapshot->get_value(path), buffer);
@@ -57,7 +57,7 @@ Ref<_PropertySnapshot> _SnapshotHistoryEncoder::decode(PackedByteArray data, Typ
 		}
 	}
 
-	for (int i = 0; i < properties.size(); i += 1) {
+	for (int i = 0; i < properties.size(); i++) {
 		if (buffer->get_available_bytes() == 0) {
 			_logger->warning(vformat("Received snapshot with %d entries, with %d known - parsing as much as possible", result->size(), properties.size()));
 			break;

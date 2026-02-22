@@ -68,8 +68,8 @@ Ref<_PropertySnapshot> _DiffHistoryEncoder::decode(PackedByteArray data, TypedAr
 	Ref<StreamPeerBuffer> buffer;
 	buffer.instantiate();
 	buffer->set_data_array(data);
-
 	uint8_t packet_version = buffer->get_u8();
+
 	if (packet_version != _version) {
 		if (!_has_received) {
 			// This is the first time we receive data
