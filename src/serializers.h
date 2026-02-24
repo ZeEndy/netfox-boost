@@ -611,7 +611,7 @@ class _DictionarySerializer : public NetworkSchemaSerializer {
 
 protected:
 	static void _bind_methods() {
-		ClassDB::bind_static_method("_ArraySerializer", D_METHOD("new_", "p_key_serializer", "p_value_serializer", "p_size_serializer"), &_ArraySerializer::new_);
+		ClassDB::bind_static_method("_DictionarySerializer", D_METHOD("new_", "p_key_serializer", "p_value_serializer", "p_size_serializer"), &_DictionarySerializer::new_);
 	};
 
 public:
